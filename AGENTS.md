@@ -76,6 +76,23 @@ pnpm run dev
 - 后端服务默认端口 3000（部署时使用 5000）
 - 不校验合法域名仅限本地开发调试
 
+## 小程序样式规范
+
+### 设计系统变量 (`app.wxss`)
+- 主色调：`#3370FF`（蓝）、`#34C759`（绿）、`#FF3B30`（红）
+- 中性色：文字 `#1F2329`、次要 `#646A73`、占位 `#8F959E`
+- 间距系统：`8rpx / 12rpx / 16rpx / 20rpx / 24rpx / 30rpx`
+- 圆角：`8rpx / 12rpx / 16rpx / 20rpx / 24rpx`
+- 阴影：`0 4rpx 16rpx rgba(0,0,0,0.06)`（卡片）、渐变阴影（按钮）
+
+### 页面样式文件
+| 页面 | 文件 |
+|------|------|
+| 首页 | `pages/home/home.wxss` |
+| 录入选择 | `pages/entry/entry.wxss` |
+| 复核 | `pages/review/review.wxss` |
+| 查询 | `pages/query/query.wxss` |
+
 ## 常见问题和预防
 - 飞书图片写入排查：设置 `FEISHU_DEBUG=true` 输出调试日志
 - 确保 `.env` 文件正确配置再启动服务

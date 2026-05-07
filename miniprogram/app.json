@@ -8,9 +8,11 @@
   ],
   "window": {
     "backgroundTextStyle": "light",
-    "navigationBarBackgroundColor": "#3370FF",
+    "navigationBarBackgroundColor": "#1F2329",
     "navigationBarTitleText": "box2bitable 盘点助手",
-    "navigationBarTextStyle": "white"
+    "navigationBarTextStyle": "white",
+    "backgroundColorTop": "#F7F8FA",
+    "backgroundColor": "#F7F8FA"
   },
   "lazyCodeLoading": "requiredComponents",
   "sitemapLocation": "sitemap.json"
