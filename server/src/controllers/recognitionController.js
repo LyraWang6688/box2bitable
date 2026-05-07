@@ -7,6 +7,44 @@ const { uploadDir } = require('../utils/upload');
 const axios = require('axios');
 const feishuService = require('../services/feishuService');
 
+const tasks = new Map();
+const taskTtlMs = Number(process.env.RECOGNITION_TASK_TTL_MS || 30 * 60_000);
+const taskSweepIntervalMs = Number(process.env.RECOGNITION_TASK_SWEEP_INTERVAL_MS || 60_000);
+let lastSweepAt = 0;
+
+const nowIso = () => new Date().toISOString();
+
+const sweepTasks = () => {
+  const t = Date.now();
+  if (t - lastSweepAt < taskSweepIntervalMs) return;
+  lastSweepAt = t;
+  for (const [k, v] of tasks.entries()) {
+    if (!v) {
+      tasks.delete(k);
+      continue;
+    }
+    const updatedAt = Number(v.updated_at_ms || 0);
+    if (updatedAt && t - updatedAt > taskTtlMs) tasks.delete(k);
+  }
+};
+
+const setTask = (taskId, patch) => {
+  sweepTasks();
+  const prev = tasks.get(taskId) || {};
+  const updated = Object.assign({}, prev, patch, {
+    task_id: taskId,
+    updated_at: nowIso(),
+    updated_at_ms: Date.now(),
+  });
+  tasks.set(taskId, updated);
+  return updated;
+};
+
+const getTask = (taskId) => {
+  sweepTasks();
+  return tasks.get(taskId) || null;
+};
+
 const mimeToExt = (mime) => {
   switch (mime) {
     case 'image/jpeg':
@@ -126,52 +164,83 @@ const uploadAndRecognize = async (req, res) => {
     const module = normalizeModule(req.body?.module);
     const filePath = req.file.path;
     const fileName = req.file.filename;
-    console.log('开始识别文件:', filePath);
-
-    // 1. 提前上传图片到飞书并获取 token（用于后续同步阶段复用）
-    let feishuFileToken = null;
-    try {
-      console.log('正在提前上传图片到飞书...');
-      const target = feishuService._getBitableTarget(module);
-      feishuFileToken = await feishuService.uploadAttachment(fileName, target.appToken);
-    } catch (uploadError) {
-      console.error('提前上传飞书失败 (不影响识别):', uploadError.message);
-    }
-
-    // 2. 调用豆包 AI 服务
-    let results = await doubaoService.recognizeLabels(filePath, module);
-
-    // 3. 格式化数据
-    const formattedResults = results.map(item => {
-      const normalizedSize = normalizeSize(item.size);
-      const validation = validateSize(normalizedSize);
-      
-      const skuCode = generateSkuCode(item.item_no, item.color, normalizedSize);
-
-      if (!item.item_no || !normalizedSize) {
-        validation.isAnomaly = true;
-        validation.message = '货号或尺码缺失，无法生成有效 SKU';
-      }
-      
-      return {
-        item_no: item.item_no || '',
-        color: item.color || '',
-        size: normalizedSize,
-        supplier: item.supplier || '',
-        sku_code: skuCode,
-        is_anomaly: validation.isAnomaly,
-        validation_message: validation.message || null,
-      };
+    setTask(fileName, {
+      status: 'processing',
+      module,
+      file_token: '',
+      results: [],
+      error: '',
+      created_at: nowIso(),
+      created_at_ms: Date.now(),
     });
-    console.log('识别成功:', { count: formattedResults.length, module });
-    
+
     res.json({
       success: true,
-      task_id: fileName, // 保持与前端逻辑一致，使用文件名作为 task_id 标识物理文件
+      async: true,
+      status: 'processing',
+      task_id: fileName,
       module,
-      file_token: feishuFileToken || '',
-      results: formattedResults,
     });
+
+    (async () => {
+      try {
+        console.log('开始识别文件:', filePath);
+
+        let feishuFileToken = null;
+        try {
+          console.log('正在提前上传图片到飞书...');
+          const target = feishuService._getBitableTarget(module);
+          feishuFileToken = await feishuService.uploadAttachment(fileName, target.appToken);
+        } catch (uploadError) {
+          console.error('提前上传飞书失败 (不影响识别):', uploadError.message);
+        }
+
+        const results = await doubaoService.recognizeLabels(filePath, module);
+        const formattedResults = (results || []).map((item) => {
+          const normalizedSize = normalizeSize(item.size);
+          const validation = validateSize(normalizedSize);
+
+          const skuCode = generateSkuCode(item.item_no, item.color, normalizedSize);
+
+          if (!item.item_no || !normalizedSize) {
+            validation.isAnomaly = true;
+            validation.message = '货号或尺码缺失，无法生成有效 SKU';
+          }
+
+          return {
+            item_no: item.item_no || '',
+            color: item.color || '',
+            size: normalizedSize,
+            supplier: item.supplier || '',
+            sku_code: skuCode,
+            is_anomaly: validation.isAnomaly,
+            validation_message: validation.message || null,
+          };
+        });
+
+        console.log('识别成功:', { count: formattedResults.length, module });
+        setTask(fileName, {
+          status: 'done',
+          file_token: feishuFileToken || '',
+          results: formattedResults,
+          error: '',
+        });
+      } catch (error) {
+        const rawMsg = error && error.message ? String(error.message) : String(error || '');
+        setTask(fileName, {
+          status: 'failed',
+          error: 'AI识别失败: ' + rawMsg,
+        });
+
+        try {
+          if (filePath && fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (e) {
+          console.error('清理临时文件失败:', e && e.message ? e.message : e);
+        }
+      }
+    })();
 
   } catch (error) {
     console.error('识别控制器错误:', error);
@@ -194,5 +263,6 @@ const uploadAndRecognize = async (req, res) => {
 };
 
 module.exports = {
-  uploadAndRecognize
+  uploadAndRecognize,
+  getTask,
 };

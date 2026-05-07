@@ -127,6 +127,61 @@ const compressIfNeeded = async (filePath, maxBytes) => {
   return current;
 };
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const getRecognitionResultViaCloud = async ({ cloudEnvId, cloudService, apiKey, taskId }) => {
+  return callContainerJson({
+    cloudEnvId,
+    cloudService,
+    apiKey,
+    path: `/api/recognition/results/${encodeURIComponent(taskId)}`,
+    method: 'GET',
+    data: {},
+  });
+};
+
+const getRecognitionResultViaHttp = async ({ baseUrl, taskId, apiKey }) => {
+  const url = `${baseUrl}/api/recognition/results/${encodeURIComponent(taskId)}`;
+  const res = await new Promise((resolve, reject) => {
+    wx.request({
+      url,
+      method: 'GET',
+      header: Object.assign({}, apiKey ? { 'x-api-key': apiKey } : {}),
+      success: resolve,
+      fail: reject,
+    });
+  });
+  const statusCode = res && typeof res.statusCode === 'number' ? res.statusCode : 200;
+  if (statusCode >= 200 && statusCode < 300) return res.data;
+  const msg = (res && res.data && (res.data.error || res.data.message)) || `HTTP ${statusCode}`;
+  throw new Error(msg);
+};
+
+const waitForRecognitionDone = async ({
+  mode,
+  cloudEnvId,
+  cloudService,
+  apiKey,
+  baseUrl,
+  taskId,
+}) => {
+  const maxAttempts = Number.isFinite(Number(120)) ? 120 : 120;
+  const intervalMs = 1000;
+  for (let i = 0; i < maxAttempts; i++) {
+    const data = mode === 'cloud'
+      ? await getRecognitionResultViaCloud({ cloudEnvId, cloudService, apiKey, taskId })
+      : await getRecognitionResultViaHttp({ baseUrl, taskId, apiKey });
+
+    if (data && data.success) {
+      const status = String(data.status || '').toLowerCase();
+      if (status === 'done') return data;
+      if (status === 'failed') throw new Error(data.error || '识别失败');
+    }
+    await sleep(intervalMs);
+  }
+  throw new Error('识别超时，请稍后重试');
+};
+
 Page({
   data: {
     tempImagePath: '',
@@ -199,24 +254,39 @@ Page({
         const cloudService = app && app.globalData ? String(app.globalData.cloudService || '') : '';
         const apiKey = app && app.globalData ? String(app.globalData.apiKey || '') : '';
         if (wx.cloud && typeof wx.cloud.callContainer === 'function' && cloudEnvId && cloudService) {
-          const data = await uploadAndRecognizeViaCloud({
+          const first = await uploadAndRecognizeViaCloud({
             cloudEnvId,
             cloudService,
             apiKey,
             module: this.data.module,
             filePath: preparedPath
           });
-          if (data && data.success) {
-            app.globalData.lastResults = data.results;
-            app.globalData.lastTaskId = data.task_id;
-            app.globalData.lastFileToken = data.file_token || '';
-            app.globalData.lastModule = data.module || this.data.module;
-            wx.navigateTo({
-              url: `/pages/review/review?module=${encodeURIComponent(data.module || this.data.module)}`
-            });
+
+          if (!first || !first.success) {
+            wx.showToast({ title: (first && first.error) || '识别失败', icon: 'none' });
             return;
           }
-          wx.showToast({ title: (data && data.error) || '识别失败', icon: 'none' });
+
+          const taskId = first.task_id;
+          const module = first.module || this.data.module;
+          const done = (first.status === 'done' && Array.isArray(first.results))
+            ? first
+            : await waitForRecognitionDone({
+              mode: 'cloud',
+              cloudEnvId,
+              cloudService,
+              apiKey,
+              baseUrl: '',
+              taskId,
+            });
+
+          app.globalData.lastResults = done.results || [];
+          app.globalData.lastTaskId = done.task_id || taskId;
+          app.globalData.lastFileToken = done.file_token || '';
+          app.globalData.lastModule = done.module || module;
+          wx.navigateTo({
+            url: `/pages/review/review?module=${encodeURIComponent(done.module || module)}`
+          });
           return;
         }
 
@@ -250,17 +320,31 @@ Page({
           }
         }
 
-        if (data && data.success) {
-          app.globalData.lastResults = data.results;
-          app.globalData.lastTaskId = data.task_id;
-          app.globalData.lastFileToken = data.file_token || '';
-          app.globalData.lastModule = data.module || this.data.module;
-          wx.navigateTo({
-            url: `/pages/review/review?module=${encodeURIComponent(data.module || this.data.module)}`
-          });
-        } else {
+        if (!data || !data.success) {
           wx.showToast({ title: (data && data.error) || '识别失败', icon: 'none' });
+          return;
         }
+
+        const taskId = data.task_id;
+        const module = data.module || this.data.module;
+        const done = (data.status === 'done' && Array.isArray(data.results))
+          ? data
+          : await waitForRecognitionDone({
+            mode: 'http',
+            cloudEnvId: '',
+            cloudService: '',
+            apiKey,
+            baseUrl,
+            taskId,
+          });
+
+        app.globalData.lastResults = done.results || [];
+        app.globalData.lastTaskId = done.task_id || taskId;
+        app.globalData.lastFileToken = done.file_token || '';
+        app.globalData.lastModule = done.module || module;
+        wx.navigateTo({
+          url: `/pages/review/review?module=${encodeURIComponent(done.module || module)}`
+        });
       } catch (e) {
         console.error('读取或上传图片失败:', this.data.tempImagePath, e);
         wx.showToast({ title: (e && e.errMsg) || e.message || '读取图片失败', icon: 'none' });
