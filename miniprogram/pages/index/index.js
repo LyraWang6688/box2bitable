@@ -129,6 +129,11 @@ const compressIfNeeded = async (filePath, maxBytes) => {
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const isCallContainerTimeout = (e) => {
+  const msg = (e && (e.errMsg || e.message)) ? String(e.errMsg || e.message) : String(e || '');
+  return /errCode:\s*102002/.test(msg) || msg.includes('请求超时') || msg.toLowerCase().includes('timeout');
+};
+
 const getRecognitionResultViaCloud = async ({ cloudEnvId, cloudService, apiKey, taskId }) => {
   return callContainerJson({
     cloudEnvId,
@@ -157,6 +162,36 @@ const getRecognitionResultViaHttp = async ({ baseUrl, taskId, apiKey }) => {
   throw new Error(msg);
 };
 
+const postJson = async ({ url, apiKey, data }) => {
+  const res = await new Promise((resolve, reject) => {
+    wx.request({
+      url,
+      method: 'POST',
+      header: Object.assign(
+        {},
+        { 'content-type': 'application/json' },
+        apiKey ? { 'x-api-key': apiKey } : {}
+      ),
+      data: data || {},
+      success: resolve,
+      fail: reject,
+    });
+  });
+  const statusCode = res && typeof res.statusCode === 'number' ? res.statusCode : 200;
+  if (statusCode >= 200 && statusCode < 300) return res.data;
+  const msg = (res && res.data && (res.data.error || res.data.message)) || `HTTP ${statusCode}`;
+  throw new Error(msg);
+};
+
+const uploadAndRecognizeViaHttpJson = async ({ baseUrl, apiKey, module, imageUrl }) => {
+  if (!baseUrl) throw new Error('缺少后端 baseUrl 配置，无法上传图片');
+  return postJson({
+    url: `${baseUrl}/api/recognition/upload`,
+    apiKey,
+    data: { module, image_url: imageUrl },
+  });
+};
+
 const waitForRecognitionDone = async ({
   mode,
   cloudEnvId,
@@ -167,10 +202,21 @@ const waitForRecognitionDone = async ({
 }) => {
   const maxAttempts = Number.isFinite(Number(120)) ? 120 : 120;
   const intervalMs = 1000;
+  let currentMode = mode;
   for (let i = 0; i < maxAttempts; i++) {
-    const data = mode === 'cloud'
-      ? await getRecognitionResultViaCloud({ cloudEnvId, cloudService, apiKey, taskId })
-      : await getRecognitionResultViaHttp({ baseUrl, taskId, apiKey });
+    let data;
+    try {
+      data = currentMode === 'cloud'
+        ? await getRecognitionResultViaCloud({ cloudEnvId, cloudService, apiKey, taskId })
+        : await getRecognitionResultViaHttp({ baseUrl, taskId, apiKey });
+    } catch (e) {
+      if (currentMode === 'cloud' && baseUrl && isCallContainerTimeout(e)) {
+        currentMode = 'http';
+        await sleep(300);
+        continue;
+      }
+      throw e;
+    }
 
     if (data && data.success) {
       const status = String(data.status || '').toLowerCase();
@@ -254,13 +300,48 @@ Page({
         const cloudService = app && app.globalData ? String(app.globalData.cloudService || '') : '';
         const apiKey = app && app.globalData ? String(app.globalData.apiKey || '') : '';
         if (wx.cloud && typeof wx.cloud.callContainer === 'function' && cloudEnvId && cloudService) {
-          const first = await uploadAndRecognizeViaCloud({
-            cloudEnvId,
-            cloudService,
-            apiKey,
-            module: this.data.module,
-            filePath: preparedPath
-          });
+          let first;
+          const baseUrl = app && app.globalData ? String(app.globalData.baseUrl || '') : '';
+          const module = this.data.module;
+          let imageUrlForFallback = '';
+
+          try {
+            if (!wx.cloud || typeof wx.cloud.uploadFile !== 'function' || typeof wx.cloud.getTempFileURL !== 'function') {
+              throw new Error('wx.cloud is not available');
+            }
+
+            const suffix = getExtname(preparedPath) || '.jpg';
+            const cloudPath = `box2bitable/${Date.now()}_${Math.floor(Math.random() * 1e6)}${suffix}`;
+            const uploadRes = await wx.cloud.uploadFile({ cloudPath, filePath: preparedPath });
+            const fileID = uploadRes && uploadRes.fileID;
+            if (!fileID) throw new Error('cloud.uploadFile failed');
+
+            const urlRes = await wx.cloud.getTempFileURL({ fileList: [fileID] });
+            imageUrlForFallback = urlRes && urlRes.fileList && urlRes.fileList[0] && urlRes.fileList[0].tempFileURL
+              ? String(urlRes.fileList[0].tempFileURL)
+              : '';
+            if (!imageUrlForFallback) throw new Error('cloud.getTempFileURL failed');
+
+            first = await callContainerJson({
+              cloudEnvId,
+              cloudService,
+              apiKey,
+              path: '/api/recognition/upload',
+              method: 'POST',
+              data: { module, image_url: imageUrlForFallback },
+            });
+          } catch (e) {
+            if (baseUrl && isCallContainerTimeout(e) && imageUrlForFallback) {
+              first = await uploadAndRecognizeViaHttpJson({
+                baseUrl,
+                apiKey,
+                module,
+                imageUrl: imageUrlForFallback,
+              });
+            } else {
+              throw e;
+            }
+          }
 
           if (!first || !first.success) {
             wx.showToast({ title: (first && first.error) || '识别失败', icon: 'none' });
@@ -268,7 +349,7 @@ Page({
           }
 
           const taskId = first.task_id;
-          const module = first.module || this.data.module;
+          const moduleFromResp = first.module || module;
           const done = (first.status === 'done' && Array.isArray(first.results))
             ? first
             : await waitForRecognitionDone({
@@ -276,16 +357,16 @@ Page({
               cloudEnvId,
               cloudService,
               apiKey,
-              baseUrl: '',
+              baseUrl,
               taskId,
             });
 
           app.globalData.lastResults = done.results || [];
           app.globalData.lastTaskId = done.task_id || taskId;
           app.globalData.lastFileToken = done.file_token || '';
-          app.globalData.lastModule = done.module || module;
+          app.globalData.lastModule = done.module || moduleFromResp;
           wx.navigateTo({
-            url: `/pages/review/review?module=${encodeURIComponent(done.module || module)}`
+            url: `/pages/review/review?module=${encodeURIComponent(done.module || moduleFromResp)}`
           });
           return;
         }
