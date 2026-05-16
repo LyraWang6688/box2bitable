@@ -6,7 +6,7 @@
 ## 技术栈
 - **前端**：微信小程序原生开发 (WXML, WXSS, JS)
 - **后端**：Node.js + Express (>=20)
-- **数据库/存储**：Supabase (PostgreSQL + Storage)
+- **部署方式**：腾讯云轻量应用服务器 + Nginx + PM2
 - **AI 模型**：豆包 (Doubao) 大模型 API
 - **表格服务**：飞书多维表格 (Feishu Bitable) API
 
@@ -18,7 +18,7 @@
 │   ├── src/
 │   │   ├── controllers/ # 控制器
 │   │   ├── routes/      # 路由
-│   │   ├── services/    # 业务逻辑 (AI, 飞书, Supabase)
+│   │   ├── services/    # 业务逻辑 (AI, 飞书)
 │   │   └── utils/       # 工具类
 │   ├── scripts/         # 部署脚本
 │   └── package.json
@@ -26,8 +26,7 @@
 │   ├── pages/          # 页面
 │   ├── utils/          # 工具函数
 │   └── app.json
-├── supabase/           # 数据库迁移文件
-│   └── migrations/
+├── uploads/            # 服务端临时上传目录（运行时自动创建）
 ├── .env.example        # 环境变量模板
 └── README.md
 ```
@@ -62,7 +61,6 @@ pnpm run dev
 
 ### 环境变量
 参考 `.env.example`，需要配置：
-- `SUPABASE_*` - 数据库配置
 - `ARK_*` - 豆包大模型配置
 - `FEISHU_*` - 飞书多维表格配置
 - `WX_*` - 微信小程序配置

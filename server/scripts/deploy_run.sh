@@ -10,4 +10,4 @@ export PORT=5000
 export NODE_ENV=production
 
 echo "Starting server on port $PORT..."
-node src/app.js
+pm2 start ecosystem.config.js

@@ -6,7 +6,6 @@ App({
     wx.setStorageSync('logs', logs)
   },
   globalData: {
-    // 修改为你的后端服务器地址
-    baseUrl: 'http://localhost:3000'
+    baseUrl: 'https://api.bamamei.online'
   }
 })

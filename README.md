@@ -19,7 +19,7 @@
 ## 3. 技术栈
 - **前端**：微信小程序原生开发 (WXML, WXSS, JS)
 - **后端**：Node.js + Express
-- **数据库/存储**：Supabase (PostgreSQL + Storage)
+- **部署方式**：腾讯云轻量应用服务器 + Nginx + PM2
 - **AI 模型**：豆包 (Doubao) 大模型 API
 - **表格服务**：飞书多维表格 (Feishu Bitable) API
 
@@ -31,25 +31,34 @@
 │   ├── src/
 │   │   ├── controllers/ # 控制器
 │   │   ├── routes/      # 路由
-│   │   ├── services/    # 业务逻辑 (AI, 飞书, Supabase)
+│   │   ├── services/    # 业务逻辑 (AI, 飞书)
 │   │   └── utils/       # 工具类
 │   └── package.json
 ├── miniprogram/        # 微信小程序前端代码
 │   ├── pages/          # 页面
 │   ├── utils/          # 工具函数
 │   └── app.json
+├── uploads/            # 服务端临时上传目录（运行时自动创建）
 ├── .env.example        # 环境变量模板
 └── README.md
 ```
 
 ## 5. 快速开始
 1. 安装依赖并启动后端
-   - `cd server && npm install`
-   - `npm run dev`
+   - `cd server && pnpm install`
+   - `pnpm run dev`
 2. 使用微信开发者工具打开 `miniprogram/` 目录
-3. 开发者工具本地调试建议
+3. 生产环境默认后端地址
+   - 小程序请求 `https://api.bamamei.online`
+4. 轻量云服务器部署
+   - 服务器安装 `Node 20`、`pnpm`、`pm2`、`nginx`
+   - `cd /opt/box2bitable/server && pnpm install`
+   - `pm2 start ecosystem.config.js`
+   - `nginx` 反向代理到 `127.0.0.1:5000`
+   - `certbot --nginx -d api.bamamei.online`
+5. 开发者工具本地调试建议
    - 勾选“**不校验合法域名、web-view（业务域名）、TLS版本以及HTTPS证书**”
-4. 飞书图片写入排查（可选）
+6. 飞书图片写入排查（可选）
    - 设置 `FEISHU_DEBUG=true` 输出飞书上传与写入的入参/出参日志（token 默认脱敏）
    - 设置 `FEISHU_DEBUG_SHOW_TOKENS=true` 输出 token 明文（仅建议本地排查使用）
 

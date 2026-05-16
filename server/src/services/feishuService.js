@@ -204,7 +204,8 @@ class FeishuService {
    * Upload local file to Feishu Bitable attachments
    * @param {string} filename 
    */
-  async uploadAttachment(filename) {
+  async uploadAttachment(filename, moduleKey = 'purchase') {
+    const target = this._getBitableTarget(moduleKey);
     const filePath = path.join(uploadDir, filename);
     console.log(`[图片同步] 准备上传文件: ${filePath}`);
     
@@ -220,7 +221,7 @@ class FeishuService {
       logFeishu('[图片同步] uploadAll 入参:', {
         file_name: filename,
         parent_type: 'bitable_image',
-        parent_node: maskToken(this.appToken),
+        parent_node: maskToken(target.appToken),
         size: stats.size,
       });
 
@@ -228,7 +229,7 @@ class FeishuService {
         data: {
           file_name: filename,
           parent_type: 'bitable_image',
-          parent_node: this.appToken,
+          parent_node: target.appToken,
           size: stats.size,
           file: fs.createReadStream(filePath),
         },

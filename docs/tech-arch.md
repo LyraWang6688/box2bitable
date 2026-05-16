@@ -5,7 +5,6 @@ graph TD
   A[微信小程序] --> B[Express API]
   B --> C[豆包大模型]
   B --> D[飞书多维表格]
-  B --> E[(Supabase)]
 ```
 
 ## 2. 领域模型（简化）
@@ -50,3 +49,11 @@ graph TD
 2. 写入接口入参的附件字段是否为 `[{file_token}]`
 3. 飞书写入接口是否返回 `code=0`
 4. 若存在部分成功，前端需展示 `results[].status` 与失败原因，并提供重试入口
+
+## 6. 部署基线
+
+- 运行环境：腾讯云轻量应用服务器（Ubuntu）
+- 进程管理：PM2
+- 反向代理：Nginx
+- 对外域名：`https://api.bamamei.online`
+- 证书：Let's Encrypt / Certbot

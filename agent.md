@@ -72,7 +72,7 @@ box2bitable 提供两大能力：
 {
   "success": true,
   "task_id": "image-xxx.jpg",
-  "db_task_id": "uuid",
+  "file_token": "file_xxx",
   "results": [
     { "item_no": "3363-16", "color": "米", "size": "37", "supplier": "一代千金" }
   ]
@@ -87,7 +87,7 @@ box2bitable 提供两大能力：
 - reviewed_data：复核后的记录数组（必填）
 - module：purchase / sales / inventory（必填）
 - task_id：图片文件名（可选，用于同步阶段兜底上传）
-- db_task_id：数据库任务ID（可选，用于复用预上传的 file_token）
+- file_token / feishu_file_token：预上传得到的飞书附件 token（可选）
 
 返回：
 - 全部成功：HTTP 200，`success: true`
@@ -98,8 +98,9 @@ box2bitable 提供两大能力：
 `POST /api/sync/retry`
 
 字段：
-- db_task_id（必填）
+- reviewed_data / failed_records（必填，传需要重试的失败记录）
 - task_id（可选）
+- file_token / feishu_file_token（可选）
 - module（必填）
 
 ### 5.5 库存查询（数据查询）
