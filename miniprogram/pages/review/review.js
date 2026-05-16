@@ -1,4 +1,12 @@
-const { getAuthHeader } = require('../../utils/api');
+const safeGetAuthHeader = () => {
+  try {
+    const { getAuthHeader } = require('../../utils/api');
+    return typeof getAuthHeader === 'function' ? getAuthHeader() : {};
+  } catch (e) {
+    console.warn('load api auth header failed:', e);
+    return {};
+  }
+};
 
 Page({
   data: {
@@ -246,7 +254,7 @@ Page({
     wx.request({
       url: `${app.globalData.baseUrl}/api/sync`,
       method: 'POST',
-      header: getAuthHeader(),
+      header: safeGetAuthHeader(),
       data: {
         reviewed_data: this.data.results,
         task_id: this.data.taskId,
@@ -304,7 +312,7 @@ Page({
     wx.request({
       url: `${app.globalData.baseUrl}/api/sync/retry`,
       method: 'POST',
-      header: getAuthHeader(),
+      header: safeGetAuthHeader(),
       data: {
         failed_records: this.data.failures,
         task_id: this.data.taskId,

@@ -1,3 +1,5 @@
+const { getAuthHeader } = require('../../utils/api');
+
 Page({
   data: {
     itemNo: '',
@@ -23,6 +25,7 @@ Page({
     wx.request({
       url: `${app.globalData.baseUrl}/api/query/inventory`,
       method: 'GET',
+      header: getAuthHeader(),
       data: { item_no: itemNo },
       success: (res) => {
         if (res.data && res.data.success) {
@@ -46,4 +49,3 @@ Page({
     });
   }
 });
-

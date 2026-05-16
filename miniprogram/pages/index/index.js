@@ -1,4 +1,12 @@
-const { getAuthHeader } = require('../../utils/api');
+const safeGetAuthHeader = () => {
+  try {
+    const { getAuthHeader } = require('../../utils/api');
+    return typeof getAuthHeader === 'function' ? getAuthHeader() : {};
+  } catch (e) {
+    console.warn('load api auth header failed:', e);
+    return {};
+  }
+};
 
 Page({
   data: {
@@ -18,14 +26,41 @@ Page({
   },
 
   chooseImage() {
+    const applyPath = (filePath) => {
+      if (!filePath) return;
+      this.setData({ tempImagePath: filePath });
+    };
+
+    const fallbackChooseImage = () => {
+      wx.chooseImage({
+        count: 1,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
+          const paths = res && res.tempFilePaths;
+          applyPath(paths && paths[0]);
+        },
+        fail: () => {
+          wx.showToast({ title: '选择图片失败', icon: 'none' });
+        }
+      });
+    };
+
+    if (typeof wx.chooseMedia !== 'function') {
+      fallbackChooseImage();
+      return;
+    }
+
     wx.chooseMedia({
       count: 1,
       mediaType: ['image'],
       sourceType: ['album', 'camera'],
       success: (res) => {
-        this.setData({
-          tempImagePath: res.tempFiles[0].tempFilePath
-        });
+        const file = res && res.tempFiles && res.tempFiles[0];
+        applyPath(file && file.tempFilePath);
+      },
+      fail: () => {
+        fallbackChooseImage();
       }
     });
   },
@@ -40,7 +75,7 @@ Page({
       url: `${app.globalData.baseUrl}/api/recognition/upload`,
       filePath: this.data.tempImagePath,
       name: 'image',
-      header: getAuthHeader(),
+      header: safeGetAuthHeader(),
       formData: {
         module: this.data.module
       },
@@ -92,7 +127,7 @@ Page({
     wx.request({
       url: `${app.globalData.baseUrl}/api/recognition/results/${encodeURIComponent(taskId)}`,
       method: 'GET',
-      header: getAuthHeader(),
+      header: safeGetAuthHeader(),
       success: (res) => {
         const data = res.data || {};
         if (data.success && (data.status === 'done' || Array.isArray(data.results))) {

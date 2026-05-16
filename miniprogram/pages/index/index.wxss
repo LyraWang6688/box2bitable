@@ -40,10 +40,22 @@
   justify-content: center;
 }
 
-.upload-icon {
-  width: 80rpx;
-  height: 80rpx;
+.upload-icon-shell {
+  width: 104rpx;
+  height: 104rpx;
   margin-bottom: 24rpx;
+  border-radius: 28rpx;
+  background: rgba(51, 112, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.upload-icon-glyph {
+  font-size: 64rpx;
+  line-height: 1;
+  color: #3370FF;
+  font-weight: 500;
 }
 
 .preview-image {
