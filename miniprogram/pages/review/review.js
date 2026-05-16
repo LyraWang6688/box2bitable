@@ -1,3 +1,5 @@
+const { getAuthHeader } = require('../../utils/api');
+
 Page({
   data: {
     results: [],
@@ -25,13 +27,13 @@ Page({
       this.setData({
         results: app.globalData.lastResults,
         taskId: app.globalData.lastTaskId,
-        dbTaskId: app.globalData.lastDbTaskId
+        feishuFileToken: app.globalData.lastFeishuFileToken
       });
       this._recomputeView();
       // 使用完后清空
       app.globalData.lastResults = null;
       app.globalData.lastTaskId = null;
-      app.globalData.lastDbTaskId = null;
+      app.globalData.lastFeishuFileToken = null;
       app.globalData.lastModule = null;
     } else if (options.results) {
       this.setData({
@@ -244,10 +246,11 @@ Page({
     wx.request({
       url: `${app.globalData.baseUrl}/api/sync`,
       method: 'POST',
+      header: getAuthHeader(),
       data: {
         reviewed_data: this.data.results,
         task_id: this.data.taskId,
-        db_task_id: this.data.dbTaskId,
+        feishu_file_token: this.data.feishuFileToken,
         module: this.data.module
       },
       success: (res) => {
@@ -301,9 +304,11 @@ Page({
     wx.request({
       url: `${app.globalData.baseUrl}/api/sync/retry`,
       method: 'POST',
+      header: getAuthHeader(),
       data: {
-        db_task_id: this.data.dbTaskId,
+        failed_records: this.data.failures,
         task_id: this.data.taskId,
+        feishu_file_token: this.data.feishuFileToken,
         module: this.data.module
       },
       success: (res) => {

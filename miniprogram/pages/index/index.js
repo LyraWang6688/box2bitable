@@ -1,3 +1,5 @@
+const { getAuthHeader } = require('../../utils/api');
+
 Page({
   data: {
     tempImagePath: '',
@@ -38,26 +40,36 @@ Page({
       url: `${app.globalData.baseUrl}/api/recognition/upload`,
       filePath: this.data.tempImagePath,
       name: 'image',
+      header: getAuthHeader(),
       formData: {
         module: this.data.module
       },
       success: (res) => {
-        const data = JSON.parse(res.data);
-        if (data.success) {
-          // 将结果、任务ID和数据库任务ID存入全局变量
-          app.globalData.lastResults = data.results;
-          app.globalData.lastTaskId = data.task_id;
-          app.globalData.lastDbTaskId = data.db_task_id;
-          app.globalData.lastModule = data.module || this.data.module;
-          // 跳转到复核页面
-          wx.navigateTo({
-            url: `/pages/review/review?module=${encodeURIComponent(data.module || this.data.module)}`
+        let data = {};
+        try {
+          data = JSON.parse(res.data);
+        } catch (e) {
+          wx.showToast({
+            title: '识别响应格式错误',
+            icon: 'none'
           });
+          this.setData({ loading: false });
+          return;
+        }
+
+        if (data.success && data.async && data.task_id) {
+          this.pollRecognitionResult(data.task_id, 0);
+          return;
+        }
+
+        if (data.success) {
+          this.goReview(data);
         } else {
           wx.showToast({
             title: data.error || '识别失败',
             icon: 'none'
           });
+          this.setData({ loading: false });
         }
       },
       fail: (err) => {
@@ -65,10 +77,71 @@ Page({
           title: '网络请求失败',
           icon: 'none'
         });
+        this.setData({ loading: false });
       },
       complete: () => {
+        // 异步识别需要保持 loading，等待轮询完成后再关闭。
+      }
+    });
+  },
+
+  pollRecognitionResult(taskId, retryCount) {
+    const app = getApp();
+    const maxRetry = 40;
+
+    wx.request({
+      url: `${app.globalData.baseUrl}/api/recognition/results/${encodeURIComponent(taskId)}`,
+      method: 'GET',
+      header: getAuthHeader(),
+      success: (res) => {
+        const data = res.data || {};
+        if (data.success && (data.status === 'done' || Array.isArray(data.results))) {
+          this.goReview(data);
+          return;
+        }
+
+        if (data.status === 'failed' || data.error) {
+          wx.showToast({
+            title: data.error || '识别失败',
+            icon: 'none'
+          });
+          this.setData({ loading: false });
+          return;
+        }
+
+        if (retryCount >= maxRetry) {
+          wx.showToast({
+            title: '识别超时，请稍后重试',
+            icon: 'none'
+          });
+          this.setData({ loading: false });
+          return;
+        }
+
+        setTimeout(() => {
+          this.pollRecognitionResult(taskId, retryCount + 1);
+        }, 1500);
+      },
+      fail: () => {
+        wx.showToast({
+          title: '查询识别结果失败',
+          icon: 'none'
+        });
         this.setData({ loading: false });
       }
+    });
+  },
+
+  goReview(data) {
+    const app = getApp();
+    app.globalData.lastResults = data.results || [];
+    app.globalData.lastTaskId = data.task_id;
+    app.globalData.lastFeishuFileToken = data.feishu_file_token || data.file_token;
+    app.globalData.lastModule = data.module || this.data.module;
+    this.setData({ loading: false });
+
+    wx.navigateTo({
+      url: `/pages/review/review?module=${encodeURIComponent(data.module || this.data.module)}`
     });
   }
 });
