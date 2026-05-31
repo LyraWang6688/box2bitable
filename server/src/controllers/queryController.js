@@ -1,17 +1,22 @@
 const feishuService = require('../services/feishuService');
 const { normalizeModule } = require('../config/modules');
+const { logError, logInfo, logWarn } = require('../utils/logger');
 
 const escapeFilterValue = (value) => String(value || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 
 const queryInventory = async (req, res) => {
+  const startedAt = Date.now();
+  let itemNo = '';
   try {
-    const itemNo = String(req.query.item_no || '').trim();
+    itemNo = String(req.query.item_no || '').trim();
     if (!itemNo) {
+      logWarn('query.inventory.rejected', { reason: 'missing_item_no' });
       return res.status(400).json({ success: false, error: '缺少货号 item_no' });
     }
 
     const module = normalizeModule('inventory');
     const target = feishuService._getBitableTarget(module);
+    logInfo('query.inventory.started', { module, item_no: itemNo });
 
     const filter = `CurrentValue.[货号]="${escapeFilterValue(itemNo)}"`;
     let pageToken = undefined;
@@ -31,6 +36,13 @@ const queryInventory = async (req, res) => {
       });
 
       if (resp.code !== 0) {
+        logError('query.inventory.failed', {
+          module,
+          item_no: itemNo,
+          duration_ms: Date.now() - startedAt,
+          error: resp.msg,
+          code: resp.code,
+        });
         return res.status(500).json({ success: false, error: `飞书查询失败: ${resp.msg}` });
       }
 
@@ -59,8 +71,21 @@ const queryInventory = async (req, res) => {
         return String(a.size).localeCompare(String(b.size));
       });
 
+    logInfo('query.inventory.completed', {
+      module,
+      item_no: itemNo,
+      duration_ms: Date.now() - startedAt,
+      source_record_count: all.length,
+      result_count: rows.length,
+    });
+
     res.json({ success: true, item_no: itemNo, rows });
   } catch (e) {
+    logError('query.inventory.failed', {
+      item_no: itemNo,
+      duration_ms: Date.now() - startedAt,
+      error: e.message,
+    });
     res.status(500).json({ success: false, error: e.message });
   }
 };
@@ -68,4 +93,3 @@ const queryInventory = async (req, res) => {
 module.exports = {
   queryInventory,
 };
-

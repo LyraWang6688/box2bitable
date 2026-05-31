@@ -7,6 +7,7 @@ const safeGetAuthHeader = () => {
     return {};
   }
 };
+const { getModuleConfig } = require('../../config/modules');
 
 Page({
   data: {
@@ -18,6 +19,10 @@ Page({
     syncSummary: null,
     module: 'purchase',
     moduleLabel: '采购',
+    reviewLayout: 'grouped',
+    includeSkuCode: true,
+    showSupplierField: true,
+    showSalesFields: false,
     payOptions: ['支付宝', '微信', '现金', '工商银行'],
     categoryOptions: ['男单', '女单', '男凉', '女凉']
   },
@@ -25,10 +30,14 @@ Page({
   onLoad(options) {
     const app = getApp();
     const moduleKey = (options && options.module) ? String(options.module) : (app.globalData.lastModule || 'purchase');
-    const labelMap = { purchase: '采购', sales: '销售', inventory: '库存' };
+    const moduleConfig = getModuleConfig(moduleKey);
     this.setData({
-      module: moduleKey,
-      moduleLabel: labelMap[moduleKey] || moduleKey
+      module: moduleConfig.key,
+      moduleLabel: moduleConfig.label,
+      reviewLayout: moduleConfig.reviewLayout,
+      includeSkuCode: moduleConfig.includeSkuCode,
+      showSupplierField: moduleConfig.showSupplierField,
+      showSalesFields: moduleConfig.showSalesFields
     });
 
     if (app.globalData.lastResults) {
@@ -65,23 +74,17 @@ Page({
   },
 
   _normalizeResults(results, moduleKey) {
-    const module = moduleKey || this.data.module;
+    const moduleConfig = getModuleConfig(moduleKey || this.data.module);
     return (results || []).map((item, index) => {
       const next = Object.assign({}, item, {
         client_row_id: this._ensureClientRowId(item, index)
       });
-      if (module !== 'sales') {
+      if (moduleConfig.includeSkuCode) {
         next.sku_code = this._generateSkuCode(next.item_no, next.color, next.size);
       }
-      if (module === 'sales') {
-        if (next.quantity == null || next.quantity === '') next.quantity = 1;
-        if (next.amount == null) next.amount = '';
-        if (!next.pay_method) next.pay_method = '';
-        if (next.remark == null) next.remark = '';
-      }
-      if (module === 'purchase' || module === 'inventory') {
-        if (next.quantity == null || next.quantity === '') next.quantity = 1;
-      }
+      Object.keys(moduleConfig.defaults || {}).forEach((field) => {
+        if (next[field] == null || next[field] === '') next[field] = moduleConfig.defaults[field];
+      });
       return next;
     });
   },
@@ -120,9 +123,10 @@ Page({
 
   _recomputeView() {
     const moduleKey = this.data.module;
+    const moduleConfig = getModuleConfig(moduleKey);
     const normalized = this._normalizeResults(this.data.results || [], moduleKey);
     const patch = { results: normalized };
-    if (moduleKey === 'purchase') {
+    if (moduleConfig.reviewLayout === 'grouped') {
       patch.purchaseGroups = this._buildPurchaseGroups(normalized);
     } else {
       patch.purchaseGroups = [];
@@ -227,7 +231,8 @@ Page({
   },
 
   _validateBeforeSync() {
-    if (this.data.module !== 'purchase') return { ok: true };
+    const moduleConfig = getModuleConfig(this.data.module);
+    if (!(moduleConfig.requiredGroupFields || []).includes('category')) return { ok: true };
     const groups = this.data.purchaseGroups || [];
     const missing = groups.filter((g) => !String(g.category || '').trim()).map((g) => g.item_no || g.groupKey);
     if (missing.length > 0) {
