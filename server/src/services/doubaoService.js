@@ -1,5 +1,7 @@
 const OpenAI = require('openai');
 const fs = require('fs');
+const { getModuleDefinition } = require('../config/modules');
+const { logError, logInfo } = require('../utils/logger');
 
 /**
  * Doubao (Volcengine Ark) Vision Service
@@ -40,9 +42,8 @@ class DoubaoService {
       const imageBase64 = fs.readFileSync(filePath, { encoding: 'base64' });
       const imageData = `data:image/jpeg;base64,${imageBase64}`;
 
-      const module = String(moduleKey || '').trim().toLowerCase() || 'purchase';
-      const needSupplier = module === 'purchase';
-      const supplierRule = needSupplier
+      const moduleConfig = getModuleDefinition(moduleKey);
+      const supplierRule = moduleConfig.recognition.requireSupplier
         ? '4. supplier: 供应商（即标签上的品牌或厂家名称，如 豪路, Nike, 耐克旗舰店 等）'
         : '4. supplier: 供应商（可选字段，若未识别到返回空字符串 ""）';
 
@@ -89,7 +90,10 @@ ${supplierRule}
 
       // 4. Parse the JSON response
       const content = response.choices[0].message.content;
-      console.log('Doubao Raw Response:', content);
+      logInfo('recognition.doubao.raw_received', {
+        module: moduleConfig.key,
+        raw_length: String(content || '').length,
+      });
 
       // Clean the response (sometimes AI wraps it in ```json ... ```)
       const cleanedContent = content.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -101,13 +105,21 @@ ${supplierRule}
         }
         return results;
       } catch (parseError) {
-        console.error('AI 响应解析失败:', cleanedContent);
+        logError('recognition.doubao.parse_failed', {
+          module: moduleConfig.key,
+          raw_length: cleanedContent.length,
+          error: parseError.message,
+        });
         throw new Error('AI 响应格式错误，无法解析 JSON: ' + parseError.message);
       }
     } catch (error) {
-      console.error('Error in DoubaoService (OpenAI SDK):', error.message);
+      logError('recognition.doubao.failed', {
+        module: moduleKey,
+        error: error.message,
+        status: error.status,
+      });
       if (error.status) {
-        console.error('API Error Status:', error.status);
+        logError('recognition.doubao.api_status', { module: moduleKey, status: error.status });
       }
       throw new Error('AI识别失败: ' + error.message);
     }

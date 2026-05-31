@@ -7,6 +7,7 @@ const safeGetAuthHeader = () => {
     return {};
   }
 };
+const { getModuleConfig } = require('../../config/modules');
 
 Page({
   data: {
@@ -18,10 +19,10 @@ Page({
 
   onLoad(options) {
     const moduleKey = options && options.module ? String(options.module) : 'purchase';
-    const labelMap = { purchase: '采购', sales: '销售', inventory: '库存' };
+    const moduleConfig = getModuleConfig(moduleKey);
     this.setData({
-      module: moduleKey,
-      moduleLabel: labelMap[moduleKey] || moduleKey
+      module: moduleConfig.key,
+      moduleLabel: moduleConfig.label
     });
   },
 
