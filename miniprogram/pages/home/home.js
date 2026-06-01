@@ -5,6 +5,9 @@ Page({
 
   goQuery() {
     wx.navigateTo({ url: '/pages/query/query' });
+  },
+
+  goAnalytics() {
+    wx.navigateTo({ url: '/pages/analytics/analytics' });
   }
 });
-

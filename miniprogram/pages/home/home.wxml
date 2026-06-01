@@ -14,6 +14,10 @@
       <text class="card-title">数据查询</text>
       <text class="card-desc">按货号查询库存尺码与数量</text>
     </view>
+
+    <view class="card" bindtap="goAnalytics">
+      <text class="card-title">数据分析</text>
+      <text class="card-desc">查看今日销售额、数量与支付汇总</text>
+    </view>
   </view>
 </view>
-
