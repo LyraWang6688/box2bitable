@@ -39,6 +39,7 @@ unpackage/
 
 # Server runtime uploads
 server/uploads/
+server/data/
 
 # Local debug scripts
 server/test_feishu.js
