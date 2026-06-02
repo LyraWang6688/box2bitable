@@ -5,7 +5,11 @@
     "pages/index/index",
     "pages/review/review",
     "pages/query/query",
-    "pages/analytics/analytics"
+    "pages/analytics/analytics",
+    "pages/sales-entry/sales-entry",
+    "pages/sales-form/sales-form",
+    "pages/sales-tasks/sales-tasks",
+    "pages/sales-review/sales-review"
   ],
   "window": {
     "backgroundTextStyle": "light",

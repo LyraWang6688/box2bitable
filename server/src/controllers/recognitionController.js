@@ -1,8 +1,8 @@
 const doubaoService = require('../services/doubaoService');
-const { normalizeSize, validateSize, generateSkuCode } = require('../utils/formatter');
 const fs = require('fs');
 const { normalizeModule } = require('../config/modules');
 const { logError, logInfo, logWarn } = require('../utils/logger');
+const { formatRecognitionResults } = require('../utils/recognitionFormatter');
 
 /**
  * Recognition Controller
@@ -77,27 +77,7 @@ const uploadAndRecognize = async (req, res) => {
     });
 
     // 3. 格式化识别结果，交给前端复核。
-    const formattedResults = results.map(item => {
-      const normalizedSize = normalizeSize(item.size);
-      const validation = validateSize(normalizedSize);
-      
-      const skuCode = generateSkuCode(item.item_no, item.color, normalizedSize);
-
-      if (!item.item_no || !normalizedSize) {
-        validation.isAnomaly = true;
-        validation.message = '货号或尺码缺失，无法生成有效 SKU';
-      }
-      
-      return {
-        item_no: item.item_no || '',
-        color: item.color || '',
-        size: normalizedSize,
-        supplier: item.supplier || '',
-        sku_code: skuCode,
-        is_anomaly: validation.isAnomaly,
-        validation_message: validation.message || null
-      };
-    });
+    const formattedResults = formatRecognitionResults(results);
 
     const anomalyCount = formattedResults.filter((item) => item.is_anomaly).length;
     logInfo('recognition.completed', {

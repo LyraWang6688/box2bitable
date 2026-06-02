@@ -30,6 +30,7 @@ app.use('/api/recognition', require('./routes/recognition'));
 app.use('/api/sync', require('./routes/sync'));
 app.use('/api/query', require('./routes/query'));
 app.use('/api/analytics', require('./routes/analytics'));
+app.use('/api/sales/tasks', require('./routes/salesTasks'));
 
 // Error handling middleware
 app.use((err, req, res, next) => {

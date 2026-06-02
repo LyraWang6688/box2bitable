@@ -5,6 +5,7 @@ miniprogram_npm/
 
 # Env
 .env
+.env.backup.*
 .env.local
 .env.development.local
 .env.test.local
@@ -38,6 +39,7 @@ unpackage/
 
 # Server runtime uploads
 server/uploads/
+server/data/
 
 # Local debug scripts
 server/test_feishu.js
