@@ -1,9 +1,13 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { buildSalesOrderDraft } = require('../src/utils/salesOrderBuilder');
+const { buildSalesOrderDraft, toDateTimestamp } = require('../src/utils/salesOrderBuilder');
 
 const fixedNow = new Date('2026-06-01T10:00:00.000Z');
+
+test('toDateTimestamp parses business date in Asia/Shanghai', () => {
+  assert.equal(toDateTimestamp('2026-06-05'), new Date('2026-06-05T00:00:00+08:00').getTime());
+});
 
 test('normal single-item sale creates master, item, and full payment flow', () => {
   const draft = buildSalesOrderDraft({

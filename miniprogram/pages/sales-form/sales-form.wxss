@@ -1,0 +1,114 @@
+.container {
+  padding: 32rpx;
+  background: #F7F8FA;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+.header {
+  margin-bottom: 28rpx;
+}
+
+.title {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #1F2329;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 26rpx;
+  color: #8F959E;
+}
+
+.form-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  margin-bottom: 28rpx;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+}
+
+.field {
+  margin-bottom: 24rpx;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.label {
+  display: block;
+  margin-bottom: 12rpx;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: #1F2329;
+}
+
+.input,
+.picker-value {
+  height: 84rpx;
+  line-height: 84rpx;
+  background: #F7F8FA;
+  border: 2rpx solid #E5E6EB;
+  border-radius: 16rpx;
+  padding: 0 24rpx;
+  font-size: 28rpx;
+  color: #1F2329;
+  box-sizing: border-box;
+}
+
+.picker-value {
+  color: #646A73;
+}
+
+.upload-card {
+  min-height: 320rpx;
+  background: #fff;
+  border: 4rpx dashed #3370FF;
+  border-radius: 20rpx;
+  margin-bottom: 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.upload-plus {
+  width: 88rpx;
+  height: 88rpx;
+  line-height: 82rpx;
+  text-align: center;
+  border-radius: 24rpx;
+  background: rgba(51, 112, 255, 0.12);
+  color: #3370FF;
+  font-size: 60rpx;
+}
+
+.upload-text {
+  font-size: 26rpx;
+  color: #8F959E;
+}
+
+.preview-image {
+  width: 100%;
+  height: 320rpx;
+}
+
+.btn-primary {
+  width: 100% !important;
+  height: 88rpx;
+  line-height: 88rpx;
+  background: #3370FF;
+  color: #fff;
+  font-size: 30rpx;
+  border-radius: 16rpx;
+}

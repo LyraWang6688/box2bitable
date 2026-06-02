@@ -8,6 +8,15 @@ const requireValue = (value, message) => {
 
 const buildCompletedDate = (now = new Date()) => now.getTime();
 
+const toDateTimestamp = (value) => {
+  if (!value) return undefined;
+  if (typeof value === 'number') return value;
+  const raw = String(value).trim();
+  if (!raw) return undefined;
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(raw) ? new Date(`${raw}T00:00:00+08:00`) : new Date(raw);
+  return Number.isNaN(date.getTime()) ? undefined : date.getTime();
+};
+
 const buildMasterFields = ({ action, input, allocation, now }) => {
   const defaults = action.defaultMasterFields;
   if (action.key === 'normal_sale') {
@@ -45,7 +54,7 @@ const buildMasterFields = ({ action, input, allocation, now }) => {
     已收金额: paidAmount,
     客户姓名: input.customer_name || '',
     客户电话: input.customer_phone || '',
-    预计交付日期: input.expected_delivery_date || undefined,
+    预计交付日期: toDateTimestamp(input.expected_delivery_date),
     备注: input.remark || '',
   };
 };
@@ -108,4 +117,5 @@ const buildSalesOrderDraft = ({ action: actionKey, input = {}, items = [], now =
 
 module.exports = {
   buildSalesOrderDraft,
+  toDateTimestamp,
 };
