@@ -30,6 +30,24 @@
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
 }
 
+.state-banner {
+  padding: 20rpx 24rpx;
+  margin-bottom: 24rpx;
+  border-radius: 16rpx;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
+.state-banner-loading {
+  color: #3370FF;
+  background: rgba(51, 112, 255, 0.08);
+}
+
+.state-banner-success {
+  color: #34C759;
+  background: rgba(52, 199, 89, 0.1);
+}
+
 .field {
   margin-bottom: 24rpx;
 }
@@ -75,6 +93,10 @@
   overflow: hidden;
 }
 
+.upload-card-disabled {
+  opacity: 0.64;
+}
+
 .upload-placeholder {
   display: flex;
   flex-direction: column;
@@ -110,5 +132,17 @@
   background: #3370FF;
   color: #fff;
   font-size: 30rpx;
+  border-radius: 16rpx;
+}
+
+.btn-secondary {
+  width: 100% !important;
+  height: 88rpx;
+  line-height: 88rpx;
+  margin-top: 20rpx;
+  background: #fff;
+  color: #3370FF;
+  font-size: 30rpx;
+  border: 2rpx solid rgba(51, 112, 255, 0.28);
   border-radius: 16rpx;
 }

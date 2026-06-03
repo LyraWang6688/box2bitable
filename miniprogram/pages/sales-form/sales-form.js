@@ -3,25 +3,29 @@ const { getAuthHeader } = require('../../utils/api');
 const PAY_OPTIONS = ['支付宝', '微信', '现金', '工商银行'];
 const PAYMENT_STATUS_OPTIONS = ['未收款', '部分收款'];
 
+const createDefaultForm = () => ({
+  sale_amount: '',
+  receivable_amount: '',
+  payment_status: '未收款',
+  paid_amount: '',
+  pay_method: '',
+  customer_name: '',
+  customer_phone: '',
+  expected_delivery_date: '',
+  remark: '',
+});
+
 Page({
   data: {
     action: 'normal_sale',
     title: '普通销售',
     tempImagePath: '',
     loading: false,
+    loadingText: '',
+    successMessage: '',
     payOptions: PAY_OPTIONS,
     paymentStatusOptions: PAYMENT_STATUS_OPTIONS,
-    form: {
-      sale_amount: '',
-      receivable_amount: '',
-      payment_status: '未收款',
-      paid_amount: '',
-      pay_method: '',
-      customer_name: '',
-      customer_phone: '',
-      expected_delivery_date: '',
-      remark: '',
-    },
+    form: createDefaultForm(),
   },
 
   onLoad(options) {
@@ -56,8 +60,9 @@ Page({
   },
 
   chooseImage() {
+    if (this.data.loading) return;
     const applyPath = (filePath) => {
-      if (filePath) this.setData({ tempImagePath: filePath });
+      if (filePath) this.setData({ tempImagePath: filePath, successMessage: '' });
     };
 
     const fallbackChooseImage = () => {
@@ -105,6 +110,7 @@ Page({
   },
 
   submit() {
+    if (this.data.loading) return;
     const error = this.validate();
     if (error) {
       wx.showToast({ title: error, icon: 'none' });
@@ -113,7 +119,11 @@ Page({
 
     const app = getApp();
     const formData = Object.assign({}, this.data.form, { action: this.data.action });
-    this.setData({ loading: true });
+    this.setData({
+      loading: true,
+      loadingText: '正在上传图片并创建识别任务...',
+      successMessage: '',
+    });
 
     wx.uploadFile({
       url: `${app.globalData.baseUrl}/api/sales/tasks`,
@@ -133,17 +143,19 @@ Page({
           wx.showToast({ title: data.error || '提交失败', icon: 'none' });
           return;
         }
-        wx.showModal({
-          title: '已提交识别任务',
-          content: '豆包识别完成后，可到待复核销售中确认并写入飞书。',
-          showCancel: false,
-          success: () => {
-            wx.redirectTo({ url: '/pages/sales-tasks/sales-tasks' });
-          },
+        this.setData({
+          tempImagePath: '',
+          form: createDefaultForm(),
+          successMessage: '已提交后台识别，可继续录入下一单',
         });
+        wx.showToast({ title: '已提交后台识别', icon: 'success' });
       },
       fail: () => wx.showToast({ title: '网络请求失败', icon: 'none' }),
-      complete: () => this.setData({ loading: false }),
+      complete: () => this.setData({ loading: false, loadingText: '' }),
     });
+  },
+
+  goToTasks() {
+    wx.navigateTo({ url: '/pages/sales-tasks/sales-tasks' });
   },
 });

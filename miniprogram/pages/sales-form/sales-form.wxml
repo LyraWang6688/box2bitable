@@ -4,6 +4,14 @@
     <text class="subtitle">先提交金额和图片，识别完成后再统一复核</text>
   </view>
 
+  <view wx:if="{{loadingText}}" class="state-banner state-banner-loading">
+    <text>{{loadingText}}</text>
+  </view>
+
+  <view wx:if="{{successMessage}}" class="state-banner state-banner-success">
+    <text>{{successMessage}}</text>
+  </view>
+
   <view class="form-card">
     <view wx:if="{{action === 'normal_sale'}}" class="field">
       <text class="label">销售金额</text>
@@ -59,7 +67,7 @@
     </view>
   </view>
 
-  <view class="upload-card" bindtap="chooseImage">
+  <view class="upload-card {{loading ? 'upload-card-disabled' : ''}}" bindtap="chooseImage">
     <view wx:if="{{!tempImagePath}}" class="upload-placeholder">
       <text class="upload-plus">+</text>
       <text class="upload-text">拍照或从相册选择</text>
@@ -67,5 +75,6 @@
     <image wx:else class="preview-image" src="{{tempImagePath}}" mode="aspectFit"></image>
   </view>
 
-  <button class="btn-primary" loading="{{loading}}" disabled="{{loading}}" bindtap="submit">提交识别任务</button>
+  <button class="btn-primary" loading="{{loading}}" disabled="{{loading}}" bindtap="submit">{{loading ? '正在上传...' : '提交识别任务'}}</button>
+  <button class="btn-secondary" disabled="{{loading}}" bindtap="goToTasks">查看待复核销售单</button>
 </view>
