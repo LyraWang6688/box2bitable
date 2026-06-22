@@ -3,10 +3,15 @@ const path = require('path');
 const fs = require('fs');
 
 // Ensure uploads directory exists
-const uploadDir = path.join(__dirname, '../../uploads');
+const uploadDir = process.env.VERCEL
+  ? path.join('/tmp', 'uploads')
+  : path.join(__dirname, '../../uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
+
+const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const allowedExts = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -19,28 +24,31 @@ const storage = multer.diskStorage({
   }
 });
 
-const allowedMimeTypes = new Set([
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-]);
+const isSafeUploadName = (name) => {
+  const s = String(name || '').trim();
+  if (!s) return false;
+  if (s.length > 200) return false;
+  if (s !== path.basename(s)) return false;
+  if (s.includes('/') || s.includes('\\')) return false;
+  return /^[A-Za-z0-9._-]+$/.test(s);
+};
 
-const allowedExtensions = new Set([
-  '.jpg',
-  '.jpeg',
-  '.png',
-  '.webp',
-]);
+const resolveUploadPath = (name) => {
+  if (!isSafeUploadName(name)) return null;
+  const root = path.resolve(uploadDir);
+  const p = path.resolve(uploadDir, name);
+  if (p === root) return null;
+  if (!p.startsWith(root + path.sep)) return null;
+  return p;
+};
 
 const upload = multer({ 
   storage: storage,
   fileFilter: (req, file, cb) => {
-    const ext = String(path.extname(file.originalname || '')).toLowerCase();
-    if (!allowedExtensions.has(ext) || !allowedMimeTypes.has(String(file.mimetype || '').toLowerCase())) {
-      return cb(new Error('仅支持上传 JPG/PNG/WEBP 图片'));
-    }
-    return cb(null, true);
+    const ext = path.extname(file.originalname || '').toLowerCase();
+    const ok = allowedMimeTypes.has(file.mimetype) && allowedExts.has(ext);
+    if (!ok) return cb(new Error('Unsupported file type'));
+    cb(null, true);
   },
   limits: {
     fileSize: 10 * 1024 * 1024 // 10MB limit
@@ -49,5 +57,7 @@ const upload = multer({
 
 module.exports = {
   upload,
-  uploadDir
+  uploadDir,
+  isSafeUploadName,
+  resolveUploadPath,
 };
